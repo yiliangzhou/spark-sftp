@@ -233,7 +233,6 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
       df.coalesce(1).write.json(hdfsTempLocation)
     } else if (fileType.equals("parquet")) {
       df.coalesce(1).write.parquet(hdfsTempLocation)
-      return copiedParquetFile(hdfsTempLocation)
     } else if (fileType.equals("csv")) {
       df.coalesce(1).
           write.
@@ -245,7 +244,7 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     }
 
     copyFromHdfs(sqlContext, hdfsTempLocation, localTempLocation)
-    copiedFile(localTempLocation)
+    copiedFile(localTempLocation, fileType)
   }
 
   private def addShutdownHook(tempLocation: String) {
@@ -254,22 +253,14 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     Runtime.getRuntime.addShutdownHook(hook)
   }
 
-  private def copiedParquetFile(tempFileLocation: String) : String = {
-    val baseTemp = new File(tempFileLocation)
-    val files = baseTemp.listFiles().filter { x =>
-      (!x.isDirectory()
-          && x.getName.endsWith("parquet")
-          && !x.isHidden())}
-    files(0).getAbsolutePath
-  }
-
-  private def copiedFile(tempFileLocation: String) : String = {
+  private def copiedFile(tempFileLocation: String, fileType: String) : String = {
     val baseTemp = new File(tempFileLocation)
     val files = baseTemp.listFiles().filter { x =>
       (!x.isDirectory()
         && !x.getName.contains("SUCCESS")
         && !x.isHidden()
-        && !x.getName.contains(".crc"))}
+        && !x.getName.contains(".crc")
+        && x.getName.endsWith(fileType))}
     files(0).getAbsolutePath
   }
 }
