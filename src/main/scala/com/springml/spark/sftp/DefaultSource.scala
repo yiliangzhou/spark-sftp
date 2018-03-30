@@ -20,7 +20,7 @@ import java.util.UUID
 
 import com.springml.sftp.client.SFTPClient
 import org.apache.commons.io.FilenameUtils
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, RelationProvider, SchemaRelationProvider}
 import org.apache.spark.sql.types.StructType
@@ -102,8 +102,8 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     val fileType = parameters.getOrElse("fileType", sys.error("File type has to be provided using 'fileType' option"))
     val header = parameters.getOrElse("header", "true")
     val copyLatest = parameters.getOrElse("copyLatest", "false")
-    val tmpFolder = parameters.getOrElse("tempLocation", System.getProperty("java.io.tmpdir"))
-    val hdfsTemp = parameters.getOrElse("hdfsTempLocation", tmpFolder)
+    val tmpFolder = parameters.getOrElse("tempLocation", getDefaultLocalTmpPath(sqlContext))
+    val hdfsTemp = parameters.getOrElse("hdfsTempLocation", getDefaultHdfsTmpPath(sqlContext))
     val cryptoKey = parameters.getOrElse("cryptoKey", null)
     val cryptoAlgorithm = parameters.getOrElse("cryptoAlgorithm", "AES")
     val delimiter = parameters.getOrElse("delimiter", ",")
@@ -139,10 +139,11 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
                            fileLocation : String): String  = {
     val hadoopConf = sqlContext.sparkContext.hadoopConfiguration
     val hdfsPath = new Path(hdfsTemp)
+
     val fs = hdfsPath.getFileSystem(hadoopConf)
-    if ("hdfs".equalsIgnoreCase(fs.getScheme)) {
-      fs.copyToLocalFile(new Path(hdfsTemp), new Path(fileLocation))
-      fs.deleteOnExit(new Path(hdfsTemp))
+    if (!fs.getScheme.equalsIgnoreCase("file")) {
+      fs.copyToLocalFile(hdfsPath, new Path(fileLocation))
+      fs.deleteOnExit(hdfsPath)
       return fileLocation
     } else {
       return hdfsTemp
@@ -243,8 +244,8 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
       df.coalesce(1).write.format("com.databricks.spark.avro").save(hdfsTempLocation)
     }
 
-    copyFromHdfs(sqlContext, hdfsTempLocation, localTempLocation)
-    copiedFile(localTempLocation, fileType)
+    val localPathToTmpResults = copyFromHdfs(sqlContext, hdfsTempLocation, localTempLocation)
+    copiedFile(localPathToTmpResults, fileType)
   }
 
   private def addShutdownHook(tempLocation: String) {
@@ -259,8 +260,16 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
       (!x.isDirectory()
         && !x.getName.contains("SUCCESS")
         && !x.isHidden()
-        && !x.getName.contains(".crc")
+        && !x.getName.endsWith(".crc")
         && x.getName.endsWith(fileType))}
     files(0).getAbsolutePath
+  }
+
+  private def getDefaultLocalTmpPath(sqlContext: SQLContext): String = {
+    new Path(FileSystem.getLocal(sqlContext.sparkContext.hadoopConfiguration).getWorkingDirectory, "tmp").toString
+  }
+
+  private def getDefaultHdfsTmpPath(sqlContext: SQLContext): String = {
+    new Path(FileSystem.get(sqlContext.sparkContext.hadoopConfiguration).getWorkingDirectory, "tmp").toString
   }
 }
