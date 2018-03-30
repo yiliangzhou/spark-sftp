@@ -102,7 +102,7 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
     val fileType = parameters.getOrElse("fileType", sys.error("File type has to be provided using 'fileType' option"))
     val header = parameters.getOrElse("header", "true")
     val copyLatest = parameters.getOrElse("copyLatest", "false")
-    val tmpFolder = parameters.getOrElse("tempLocation", getDefaultLocalTmpPath(sqlContext))
+    val tmpFolder = parameters.getOrElse("tempLocation", System.getProperty("java.io.tmpdir"))
     val hdfsTemp = parameters.getOrElse("hdfsTempLocation", getDefaultHdfsTmpPath(sqlContext))
     val cryptoKey = parameters.getOrElse("cryptoKey", null)
     val cryptoAlgorithm = parameters.getOrElse("cryptoAlgorithm", "AES")
@@ -139,7 +139,6 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
                            fileLocation : String): String  = {
     val hadoopConf = sqlContext.sparkContext.hadoopConfiguration
     val hdfsPath = new Path(hdfsTemp)
-
     val fs = hdfsPath.getFileSystem(hadoopConf)
     if (!fs.getScheme.equalsIgnoreCase("file")) {
       fs.copyToLocalFile(hdfsPath, new Path(fileLocation))
@@ -263,10 +262,6 @@ class DefaultSource extends RelationProvider with SchemaRelationProvider with Cr
         && !x.getName.endsWith(".crc")
         && x.getName.endsWith(fileType))}
     files(0).getAbsolutePath
-  }
-
-  private def getDefaultLocalTmpPath(sqlContext: SQLContext): String = {
-    new Path(FileSystem.getLocal(sqlContext.sparkContext.hadoopConfiguration).getWorkingDirectory, "tmp").toString
   }
 
   private def getDefaultHdfsTmpPath(sqlContext: SQLContext): String = {
