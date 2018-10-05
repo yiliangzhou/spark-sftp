@@ -8,12 +8,13 @@ sparkVersion := "2.1.0"
 
 spName := "springml/spark-sftp"
 
-version := "1.1.2"
+version := "1.1.3"
 
 // Dependent libraries
 libraryDependencies ++= Seq(
   "com.springml" % "sftp.client" % "1.0.3",
-  "org.mockito" % "mockito-core" % "2.0.31-beta"
+  "org.mockito" % "mockito-core" % "2.0.31-beta",
+  "com.databricks" % "spark-xml_2.11" % "0.4.1"
 )
 
 // used spark components

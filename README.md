@@ -16,14 +16,14 @@ You can link against this library in your program at the following ways:
 <dependency>
 	<groupId>com.springml</groupId>
 	<artifactId>spark-sftp_2.11</artifactId>
-	<version>1.1.1</version>
+	<version>1.1.3</version>
 </dependency>
 
 ```
 
 ### SBT Dependency
 ```
-libraryDependencies += "com.springml" % "spark-sftp_2.11" % "1.1.1"
+libraryDependencies += "com.springml" % "spark-sftp_2.11" % "1.1.3"
 ```
 
 
@@ -31,7 +31,7 @@ libraryDependencies += "com.springml" % "spark-sftp_2.11" % "1.1.1"
 This package can be added to Spark using the `--packages` command line option.  For example, to include it when starting the spark shell:
 
 ```
-$ bin/spark-shell --packages com.springml:spark-sftp_2.11:1.1.1
+$ bin/spark-shell --packages com.springml:spark-sftp_2.11:1.1.3
 ```
 
 ## Features
@@ -47,11 +47,11 @@ This library requires following options:
 * `pemPassphrase`: (Optional) Passphrase for PEM file.
 * `host`: SFTP Host.
 * `port`: (Optional) Port in which SFTP server is running. Default value 22.
-* `fileType`: Type of the file. Supported types are csv, json, avro and parquet
+* `fileType`: Type of the file. Supported types are csv, txt, json, avro and parquet
 * `inferSchema`: (Optional) InferSchema from the file content. Currently applicable only for csv fileType
 * `header`: (Optional) Applicable only for csv fileType. Is the first row in CSV file is header. 
 * `delimiter`: (Optional) Set the field delimiter. Applicable only for csv fileType. Default is comma.
-
+* `codec`: (Optional) Applicable only for csv fileType. Compression codec to use when saving to file. Should be the fully qualified name of a class implementing org.apache.hadoop.io.compress.CompressionCodec or one of case-insensitive shorten names (bzip2, gzip, lz4, and snappy). Defaults to no compression when a codec is not specified.
 
 ### Scala API
 ```scala
@@ -75,7 +75,37 @@ df.write.
       option("password", "****").
       option("fileType", "csv").
       option("delimiter", ";").
+      option("codec", "bzip2").
       save("/ftp/files/sample.csv")
+
+
+// Construct spark dataframe using text file in FTP server
+ val df = spark.read.
+            format("com.springml.spark.sftp").
+            option("host", "SFTP_HOST").
+            option("username", "SFTP_USER").
+            option("password", "****").
+            option("fileType", "txt").
+            load("config")
+            
+ // Construct spark dataframe using xml file in FTP server           
+            val df = spark.read.
+                 format("com.springml.spark.sftp").
+                 option("host", "SFTP_HOST").
+                 option("username", "SFTP_USER").
+                 option("password", "*****").
+                 option("fileType", "xml").
+                 option("rowTag", "YEAR").load("myxml.xml")
+                 
+ // Write dataframe as XML file to FTP server           
+           
+                 df.write.format("com.springml.spark.sftp").
+                 option("host", "SFTP_HOST").
+                 option("username", "SFTP_USER").
+                 option("password", "*****").
+                 option("fileType", "xml").
+                 option("rootTag", "YTD").
+                 option("rowTag", "YEAR").save("myxmlOut.xml.gz")
 
 ```
 
@@ -135,4 +165,4 @@ write.df(df,
 
 
 ## Building From Source
-This library is built with [SBT](http://www.scala-sbt.org/0.13/docs/Command-Line-Reference.html), which is automatically downloaded by the included shell script. To build a JAR file simply run `sbt/sbt package` from the project root.
+This library is built with [SBT](http://www.scala-sbt.org/0.13/docs/Command-Line-Reference.html), which is automatically downloaded by the included shell script. To build a JAR file simply run `build/sbt package` from the project root.
